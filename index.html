@@ -1,13 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>博客登录页面</title>
+    <link rel="stylesheet" href="/lib/elementui/theme-chalk/index.css">
+    <style>
+        .text {
+            font-size: 14px;
+        }
+
+        .item {
+            margin-bottom: 18px;
+        }
+
+        .clearfix:before,
+        .clearfix:after {
+            display: table;
+            content: "";
+        }
+
+        .clearfix:after {
+            clear: both
+        }
+
+        .box-card {
+            position: relative;
+            margin: 0 auto 50px;
+            background: #fff;
+            border-radius: 2px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+            box-sizing: border-box;
+            width: 30%;
+            margin-top: 200px;
+        }
+
+        .box-card .header {
+            text-align: center;
+            font-weight: 700;
+        }
+    </style>
 </head>
+
 <body>
-    <p>hahahahahahah</p>
-    
+    <div id="app">
+        <el-card class="box-card">
+            <div slot="header" class="clearfix header">
+                <span>用户登录</span>
+            </div>
+            <el-form ref="form" :model="form" label-width="80px">
+                <el-form-item label="用户名" prop="userName" :rules="[
+                    {required:true,message:'请输入用户名',trigger:'blur' },
+                    { min: 6, max: 16, message: '长度在 6 到 16 个字符', trigger: 'blur' }
+                ]">
+                    <el-input v-model="form.userName" prefix-icon="el-icon-user-solid"></el-input>
+                </el-form-item>
+                <el-form-item label="密 码" prop="pwd" :rules="[
+                {required:true,message:'请输入密码',trigger:'blur' },
+                { min: 6, max: 16, message: '长度在 6 到 16 个字符', trigger: 'blur' }
+                ]">
+                    <el-input v-model="form.pwd" type="password" show-password prefix-icon="el-icon-user-solid">
+                    </el-input>
+                </el-form-item>
+                <el-form-item label="验证码" prop="code" :rules="[
+                {required:true,message:'请输入验证码',trigger:'blur' },
+                { len:5, message: '验证码长度不正确', trigger: 'blur' }
+            ]">
+                    <el-row>
+                        <el-col :span="12">
+                            <el-input v-model="form.code" prefix-icon="el-icon-s-finance"></el-input>
+                        </el-col>
+                        <el-col :span="11" :offset="1">
+                            <el-image @click="chagecaptcha()" style="width: 200px; height: 42px" :src="codeurl"
+                                :fit="fit"></el-image>
+                        </el-col>
+                    </el-row>
+                </el-form-item>
+                <el-form-item style="float:right">
+                    <el-button type="primary" @click="login('form')">登 录</el-button>
+                </el-form-item>
+            </el-form>
+        </el-card>
+
+    </div>
+    <script src="/lib/vue/vue.js"></script>
+    <script src="/lib/elementui/index.js"></script>
+    <script src="/lib/axios/axios.js"></script>
+    <script src="/lib/encrypt/des.js"></script>
+    <script src="/lib/encrypt/md5.js"></script>
+    <script>
+        //MVVM 双向绑定
+        var app = new Vue({
+            el: '#app',
+            data: {
+                fit: "scale-down",
+                codeurl: "/captcha?v_",
+                form: {
+                    userName: "",
+                    pwd: "",
+                    code: ""
+                }
+            },
+            methods: {
+                login(formName) {
+                    this.$refs[formName].validate(async(valid) => {
+                        if (valid) {
+                            let res = await axios.get("/getkey");
+                            let key = res.data.key;
+                            if (res.data.state < 1) {
+                                this.$message.success("没有key");
+                            }
+
+                            this.form.pwd = MD5(this.form.pwd, key);
+                            
+
+
+                            axios.post("/login", this.form).then(res => {
+                                if (res.data.state > 0) {
+
+                                    this.$message.success(res.data.msg);
+                                    window.location.href = res.data.url;
+                                } else {
+                                    this.chagecaptcha();
+                                    this.$message.success(res.data.msg);
+                                }
+                            }).catch(err => {
+                                this.chagecaptcha();
+                                this.$message.error("服务器开小差了~")
+                            })
+                        } else {
+                            console.log('error submit!!');
+                            return false;
+                        }
+                    });
+                },
+                chagecaptcha() {
+                    this.codeurl = "/captcha?v_" + Date.now();
+                }
+            }
+        })
+    </script>
 </body>
+
 </html>
